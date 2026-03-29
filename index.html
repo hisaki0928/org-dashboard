@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>çµç¹ããã·ã¥ãã¼ã</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+body{font-family:'Hiragino Sans','Noto Sans JP',-apple-system,sans-serif;overscroll-behavior-y:none;background:#f9fafb}
+input,textarea,select{font-size:16px!important}
+.lc2{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#f1f1f1}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useCallback,useRef,useMemo} = React;
+
+// ââ CONSTANTS ââââââââââââââââââââââââââââââââââââââââââââââââ
+const TEAMS = [
+  {id:'cafe', label:'ã«ãã§',   emoji:'â', accent:'#f97316',bg:'#fff7ed',border:'#fed7aa'},
+  {id:'video',label:'åç»ç·¨é', emoji:'ð¬', accent:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0'},
+  {id:'sns',  label:'SNS',      emoji:'ð±', accent:'#2563eb',bg:'#eff6ff',border:'#bfdbfe'},
+  {id:'enq',  label:'En-Q',     emoji:'ð¤', accent:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe'},
+];
+const TM = Object.fromEntries(TEAMS.map(t=>[t.id,t]));
+const STATUS_OPT = ['ð¢ é èª¿','ð¡ è¦æ³¨æ','ð´ åé¡ãã','â¬ æªç¢ºèª'];
+const PRIO = {high:'ð´ é«',mid:'ð¡ ä¸­',low:'âª ä½'};
+const STAT = {todo:'ToDo',inprogress:'é²è¡ä¸­',done:'å®äº'};
+const KPI_F = {
+  cafe: [{id:'sales',label:'å£²ä¸',unit:'ä¸å'},{id:'guests',label:'å®¢æ°',unit:'äºº'},{id:'complaints',label:'ã¯ã¬ã¼ã ',unit:'ä»¶'}],
+  video:[{id:'orders',label:'æ¡ä»¶å®äº',unit:'ä»¶'},{id:+qcPass',label:'QCééç',unit:'%'},{id:'leadTime',label:'å¹³åç´æ',unit:'æ¥'}],
+  sns:  [{id:'followers',label:'ãã©ã­ã¯ã¼å¢',unit:'äºº'},{id:'engage',label:'ã¨ã³ã²ã¼ã¸ç',unit:'%'},{id:'posts',label:'æç¨¿æ°',unit:'ä»¶'}],
+  enq:  [{id:'matches',label:'ãããã³ã°',unit:'ä»¶'},{id:'members',label:'ã¡ã³ãã¼¦°',unit:'å'},{id:'hours',label:'ä»£è¡¨å·¥æ°',unit:'h'}],
+};
+const DEF_APR = {
+  cafe: [{id:'c1',label:'ã·ããç¢ºå®ã®ç¢ºèª',done:false},{id:'c2',label:'ã¡ãã¥ã¼å¤æ´ã®æçµæ¿èª',done:false},{id:'c3',label:'æ°ã³ã¢ã¡ã³ãã¼æ¡ç¨å¤æ­',done:false}],
+  video:[{id:'v1',label:'åè³ªåºæºæ¸ã®æ´æ°ç¢ºèª',done:false},{id:'v2',label:'ææ ¼å ±åã®åãåã',done:false},{id:'v3',label:'å¤é¨æ¡ä»¶ã®åæ³¨å¯å¦å¤æ­',done:false}],
+  sns:  [{id:'s1',label:'ä»é±ã®SNSæç¨¿ãæ¿èª',done:false},{id:'s2',label:'ã³ã³ã»ããã·ã¼ãç¢ºèª',done:false},{id:'s3',label:'æ°ã¢ã«ã¦ã³ãéè¨­æ¿èª',done:false}],
+  enq:  [{id:'e1',label:'ææ¬¡ã¬ãã¼ãã®ç¢ºèª',done:false},{id:'e2',label:'éè¦å¤é¨é£æºã®å¤æ­',done:false},{id:'e3',label:'é¤åã»éå¤§äºé ã®å¤æ­',done:false}],
+};
+const DEF_MEMBERS = [
+  {id:'top',name:'ç·åä»£è¡¨ï¼ä¿ºï¼',role:'ç·åä»£è¡¨',teamId:'top'},
+  {id:'m1',name:'ãµããªã¼ãã¼',role:'å¾ç¶èã»ç¾å ´è²¬ä»»è',teamId:'cafe'},
+  {id:'m2',name:'ã³ã¢ã¡ã³ãã¼A',role:'ã³ã¢ã¡ã³ãã¼',teamId:'cafe'},
+  {id:'m3',name:'ã³ã¢ã¡ã³ãã¼B',role:'ã³ã¢ã¡ã³ãã¼',teamId:'cafe'},
+  {id:'m4',name:'åç»ãªã¼ãã¼',role:'å¨æ¨©å§ä»»ãªã¼ãã¼',teamId:'video'},
+  {id:'m5',name:'æ¥­åå§è¨A',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video'},
+  {id:'m6',name:'æ¥­åå§è¨B',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video'},
+  {id:'m7',name:'SNSãµã',role:'ãµãâãªã¼ãã¼ææ ¼äºå®',teamId:'sns'},
+  {id:'m8',name:'SNSã¡ã³ãã¼A',role:'æå½è',teamId:'sns'},
+  {id:'m9',name:'SNSã¡ã³ãã¼B',role:'æå½è',teamId:'sns'},
+  {id:'m10',name:'å±åä»£è¡¨A',role:'En-Qæ¥å¸¸éå¶',teamId:'enq'},
+  {id:'m11',name:'å±åä»£è¡¨B',role:'En-Qæ¥å¸¸éå¶',teamId:'enq'},
+];
+const DEF_ORG = [
+  {id:'top',name:'ç·åä»£è¡¨ï¼ä¿ºï¼',role:'ä¸æµã®ã¿åå ',teamId:'top',parentId:null},
+  {id:'n1',name:'ãµããªã¼ãã¼',role:'å¾ç¶èã»ç¾å ´è²¬ä»»è',teamId:'cafe',parentId:'top'},
+  {id:'n2',name:'ã³ã¢ã¡ã³ãã¼A',role:'ç¾å ´ãªã¼ãã¼è£ä½',teamId:'cafe',parentId:'n1'},
+  {id:'n3',name:'ã³ã¢ã¡ã³ãã¼B',role:'ç¾å ´ãªã¼ãã¼è£ä½',teamId:'cafe',parentId:'n1'},
+  {id:'n4',name:'åç»ãªã¼ãã¼',role:'å¨æ¨©å§ä»·ãªã¼ãã¼',teamId:'video',parentId:'top'},
+  {id:'n5',name:'æ¥­åå§è¨A',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video',parentId:'n4'},
+  {id:'n6',name:'æ¥­åå§è¨B',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video',parentId:'n4'},
+  {id:'n7',name:'SNSãµã',role:'ãµãâãªã¼ãã¼ææ ¼äºå®',teamId:'sns',parentId:'top'},
+  {id:'n8',name:'SNSã¡ã³ãã¼A',role:'æå½è',teamId:'sns',parentId:'n7'},
+  {id:'n9',name:'SNSã¡ã³ãã¼B',role:'æå½è',teamId:'sns',parentId:'n7'},
+  {id:'n10',name:'å±åä»£è¡¨A',role:'En-Qæ¥å¸¸éå¶',teamId:'enq',parentId:'top'},
+  {id:'n11',name:'å±åä»£è¡¨B',role:'En-Qæ¥å¸¸éå¶',teamId:'enq',parentId:'n10'},
+];
+function mkStatus(){
+  const r={};
+  TEAMS.forEach(t=>{r[t.id]={teamId:t.id,status:'â¬ æªç¢ºèª',note:'',memo:'',kpi:{},approvals:DEF_APR[t.id].map(a=>({...a}))};});
+  return r;
+}
+const DEF = {members:DEF_MEMBERS,tasks:[],meetings:[],orgNodes:DEF_ORG,dailyStatus:mkStatus()};
+const SK='org_dash_v1';
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+function loadD(){try{const s=localStorage.getItem(SK);return s?{...JSON.parse(JSON.stringify(DEF)),...JSON.parse(s)}:JSON.parse(JSON.stringify(DEF));}catch{return JSON.parse(JSON.stringify(DEF));}}
+function saveD(d){try{localStorage.setItem(SK,JSON.stringify(d));}catch{}}
+
+function today(){return new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});}
+function toGCal(date,time){return date.replace(/-/g,'')+'T'+time.replace(':','')+'00';}
+function gcalUrl(m){
+  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title}ï¼${a.duration}åï¼${a.note?' - '+a.note:''}`).join('\n');
+  return `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(m.title)}&dates=${toGCal(m.date,m.startTime)}/${toGCal(m.date,m.endTime)}&details=${encodeURIComponent('ð ã¢ã¸ã§ã³ã\n'+agenda)}&location=${encodeURIComponent(m.location||'')}`;
+}
+function gmailUrl(m,members){
+  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title|ï¼${a.duration}åï¼æå½ï¼${a.owner}${a.note?' / '+a.note:''}`).join('\n');
+  const body=`ãä¼è­°ã${m.title}\nð ${m.date} ${m.startTime}ã${m.endTime}\nð ${m.location||'æªè¨­å®'}\n\nð ã¢ã¸ã§ã³ã\n${agenda}\n\nåå èï¼${m.attendeeIds.map(id=>members.find(x=>x.id===id)?.name||id).join('ã')}`;
+  return `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(`ãä¼è­°ã${m.title} - ${m.date}`)}&body=${encodeURIComponent(body)}`;
+}
+
+// ââ UI PRIMITIVES ââââââââââââââââââââââââââââââââââââââââââââ
+function Card({children,style,onClick,className=''}){
+  return <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${onClick?'cursor-pointer active:scale-95 transition-transform':''} ${className}`} style={style} onClick={onClick}>{children}</div>;
+}
+function Modal({title,onClose,children}){
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+        <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100 z-10">
+          <h3 className="font-bold text-gray-900 text-base">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-lg flex items-center justify-center">â</button>
+        </div>
+        <div className="px-5 py-4 space-y-3">{children}</div>
+      </div>
+    </div>
+  );
+}
+function FInput({label,...p}){return <div><label className="text-xs font-medium text-gray-500 block mb-1">{label}</label><input className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" {...p}/></div>;}
+function FTextarea({label,...p}){return <div><label className="text-xs font-medium text-gray-500 block mb-1">{label}</label><textarea className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none" rows={3} {...p}/></div>;}
+function FSelect({label,children,...p}){return <div><label className="text-xs font-medium text-gray-500 block mb-1">{label}</label><select className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white" {...p}>{children}</select></div>;}
+function Btn({children,onClick,variant='primary',className=''}){
+  const c={primary:'bg-gray-900 text-white',secondary:'bg-gray-100 text-gray-700',ghost:'border border-gray-200 text-gray-500',danger:'bg-red-500 text-white',blue:'bg-blue-500 text-white',red:'bg-red-500 text-white'};
+  return <button onClick={onClick} className={`px-4 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-transform ${c[variant]||c.primary} ${className}`}>{children}</button>;
+}
+
+// ââ OVERVIEW ââââââââââââââââââââââââââââââââââââââââââââââââââ
+function Overview({data,update}){
+  const [at,setAt]=useState(null);
+  const ds=data.dailyStatus;
+  const pen=id=>ds[id].approvals.filter(a=>!a.done).length;
+  const tot=TEAMS.reduce((s,t)=>s+pen(t.id),0);
+  const enqH=parseFloat(ds.enq.kpi['hours']||'0');
+  const set=(tid,f,v)=>update({...data,dailyStatus:{...ds,[tid]:{...ds[tid],[f]:v}}});
+  const setKpi=(tid,k,v)=>update({...data,dailyStatus:{...ds,[tid]:{...ds[tid],kpi:{...ds[tid].kpi,[k]:v}}}});
+  const toggleApr=(tid,aid)=>update({...data,dailyStatus:{...ds,[tid]:{...ds[tid],approvals:ds[tid].approvals.map(a=>a.id===aid?{...a,done:!a.done}:a)}}});
+
+  return (
+    <div className="space-y-4">
+      <div className={`rounded-2xl p-4 flex items-center gap-3 ${tot>0?'bg-red-50 border border-red-200':'bg-green-50 border border-green-200'}`}>
+        <span className="text-3xl">{tot>0?'â ï¸':'â'}</span>
+        <div>
+          <p className="font-bold text-gray-900">{tot>0?`æ¿èªå¾ã¡ ${tot} ä»¶`:'æ¿èªå¾ã¡ãªã'}</p>
+          <p className="text-xs text-gray-500">{today()}</p>
+        </div>
+      </div>
+      {enqH>=2&&<div className="bg-red-50 border border-red-300 rounded-2xl p-3"><p className="font-bold text-red-600 text-sm">â ï¸ En-Q å·¥æ°ã¢ã©ã¼ãï¼{enqH}hï¼ç®æ¨2hä»¥åï¼</p><p className="text-red-500 text-xs mt-0.5">å±åä»£è¡¨ã«å§è­²ãæ¤è¨ãã¦ãã ãã</p></div>}
+      <div className="grid grid-cols-2 gap-3">
+        {TEAMS.map(t=>{
+          const d=ds[t.id],p=pen(t.id);
+          return (
+            <Card key={t.id} className="p-4 relative" onClick={()=>setAt(t.id)} style={{borderColor:t.border,borderWidth:2}}>
+              {p>0&&<span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{p}</span>}
+              <div className="text-2xl mb-1">{t.emoji}</div>
+              <div className="font-bold text-gray-800 text-sm">{t.label}</div>
+              <div className="mt-1"><span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{background:t.accent+'22',color:t.accent}}>{d.status}</span></div>
+              {d.note&&<p className="text-xs text-gray-500 mt-1.5 lc2">{d.note}</p>}
+            </Card>
+          );
+        })}
+      </div>
+      {tot>0&&(
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">ð æ¿èªå¾ã¡ä¸è¦§</p></div>
+          {TEAMS.map(t=>{
+            const p=ds[t.id].approvals.filter(a=>!a.done);
+            if(!p.length)return null;
+            return (
+              <div key={t.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                <p className="text-xs font-bold mb-1" style={{color:t.accent}}>{t.emoji} {t.label}</p>
+                {p.map(a=><div key={a.id} className="flex items-center gap-2 text-sm text-gray-700 py-1 cursor-pointer" onClick={()=>toggleApr(t.id,a.id)}><span className="w-2 h-2 rounded-full flex-shrink-0" style={{background:t.accent}}/>{a.label}</div>)}
+              </div>
+            );
+          })}
+        </Card>
+      )}
+      {at&&(()=>{
+        const t=TM[at],d=ds[at];
+        return (
+          <Modal title={`${t.emoji} ${t.label}ãã¼ã `} onClose={()=>setAt(null)}>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">ã¹ãã¼ã¿ã¹</p>
+              <div className="grid grid-cols-2 gap-2">
+                {STATUS_OPT.map(s=>(
+                  <button key={s} onClick={()=>set(at,'status',s)} className={`py-2 rounded-xl text-sm border-2 transition-all ${d.status===s?'font-bold':'border-gray-200 text-gray-500 bg-white'}`} style={d.status===s?{borderColor:t.accent,background:t.bg}:{}}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <FTextarea label="ä»æ¥ã®ç¶æ³" value={d.note} onChange={e=>set(at,'note',e.target.value)} placeholder="ä»æ¥ã®ç¶æ³ãä¸è¨ã§..."/>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">æ¿èªã»ã¿ã¹ã¯æ¶è¾¼ã¿</p>
+              {d.approvals.map(a=>(
+                <label key={a.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-gray-50" onClick={()=>toggleApr(at,a.id)}>
+                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0" style={{borderColor:a.done?t.accent:'#d1d5db',background:a.done?t.bg:'white'}}>
+                    {a.done&&<span className="text-xs font-bold" style={{color:t.accent}}>â</span>}
+                  </div>
+                  <span className={`text-sm ${a.done?'line-through text-gray-400':'text-gray-700'}`}>{a.label}</span>
+                </label>
+              ))}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">KPI</p>
+              <div className="grid grid-cols-3 gap-2">
+                {KPI_F[at].map(f=>(
+                  <div key={f.id}>
+                    <label className="text-xs text-gray-400">{f.label}</label>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <input type="number" className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm min-w-0 focus:outline-none focus:ring-1" placeholder="â" value={d.kpi[f.id]||''} onChange={e=>setKpi(at,f.id,e.target.value)}/>
+                      <span className="text-xs text-gray-400">{f.unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <FTextarea label="åé¡ã»æ°ã«ãªããã¨" value={d.memo} onChange={e=>set(at,'memo',e.target.value)} placeholder="æ°ã«ãªããã¨ã»æç¤ºäºé ãªã©..."/>
+            <Btn variant="primary" onClick={()=>setAt(null)} className="w-full">ä¿å­ãã¦éãã</Btn>
+          </Modal>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ââ TASKS ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+function Tasks({data,update}){
+  const [showAdd,setShowAdd]=useState(false);
+  const [ft,setFt]=useState('all');
+  const [fs,setFs]=useState('all');
+  const [nt,setNt]=useState({status:'todo',priority:'mid',dueDate:'',teamId:'cafe',memberId:'',title:'',note:''});
+
+  const tasks=data.tasks.filter(t=>(ft==='all'||t.teamId===ft)&&(fs==='all'||t.status===fs));
+  const load=useMemo(()=>{const m={};data.tasks.filter(t=>t.status!=='done').forEach(t=>{m[t.memberId]=(m[t.memberId]||0)+1;});return m;},[data.tasks]);
+  const maxL=Math.max(1,...Object.values(load));
+
+  const add=()=>{
+    if(!nt.title||!nt.memberId)return;
+    const t={id:uid(),title:nt.title,memberId:nt.memberId,teamId:nt.teamId,status:nt.status,priority:nt.priority,dueDate:nt.dueDate||'',note:nt.note||'',createdAt:new Date().toISOString()};
+    update({...data,tasks:[t,...data.tasks]});
+    setShowAdd(false);setNt({status:'todo',priority:'mid',dueDate:'',teamId:'cafe',memberId:'',title:'',note:''});
+  };
+  const setS=(id,s)=>update({...data,tasks:data.tasks.map(t=>t.id===id?{...t,status:s}:t)});
+  const del=(id)=>update({...data,tasks:data.tasks.filter(t=>t.id!==id)});
+  const gm=(id)=>data.members.find(m=>m.id===id);
+  const pc=(p)=>p==='high'?'#ef4444':p==='mid'?'#f59e0b':'#9ca3af';
+  const sc={todo:'#e5e7eb',inprogress:'#fbbf24',done:'#34d399'};
+
+  return (
+    <div className="space-y-4">
+      {Object.keys(load).length>0&&(
+        <Card className="p-4">
+          <p className="text-sm font-bold text-gray-700 mb-3">ð¤ ã¡ã³ãã¼å¥ã¿ã¹ã¯éï¼æªå®äºï¼</p>
+          <div className="space-y-2">
+            {Object.entries(load).sort((a,b)=>b[1]-a[1]).map(([mid,cnt])=>{
+              const m=gm(mid),tm=m?TM[m.teamId]:null;
+              return (
+                <div key={mid} className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600 w-24 flex-shrink-0 truncate">{m?.name||mid}</span>
+                  <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full flex items-center pl-2 transition-all duration-500" style={{width:`${(cnt/maxL)*100}%`,background:tm?.accent||'#6b7280'}}>
+                      <span className="text-xs text-white font-bold">{cnt}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+      <div className="flex items-center gap-2">
+        <select className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" value={ft} onChange={e=>setFt(e.target.value)}>
+          <option value="all">å¨ãã¼ã </option>
+          {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+        </select>
+        <select className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" value={fs} onChange={e=>setFs(e.target.value)}>
+          <option value="all">å¨ã¹ãã¼ã¿ã¹</option>
+          <option value="todo">ToDo</option>
+          <option value="inprogress">é²è¡ä¸­</option>
+          <option value="done">å®äº</option>
+        </select>
+        <button onClick={()=>setShowAdd(true)} className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-xl flex-shrink-0 active:scale-95">ï¼</button>
+      </div>
+      {tasks.length===0?(
+        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">â</p><p className="text-sm">ã¿ã¹ã¯ã¯ããã¾ãã</p></div>
+      ):(
+        <div className="space-y-2">
+          {tasks.map(t=>{
+            const m=gm(t.memberId),tm=TM[t.teamId];
+            const nxtS=t.status==='done'?'todo':t.status==='todo'?'inprogress':'done';
+            return (
+              <Card key={t.id} className="p-3">
+                <div className="flex items-start gap-3">
+                  <button onClick={()=>setS(t.id,nxtS)} className="w-6 h-6 rounded-full border-2 flex-shrink-0 mt-0.5 transition-all flex items-center justify-center" style={{borderColor:sc[t.status],background:t.status==='done'?sc[t.status]:'white'}}>
+                    {t.status!=='todo'&&<span className="text-xs text-white font-bold">{t.status==='done'?'â':'â'}</span>}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${t.status==='done'?'line-through text-gray-400':'text-gray-800'}`}>{t.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{background:tm?.bg,color:tm?.accent}}>{tm?.emoji} {tm?.label}</span>
+                      {m&&<span className="text-xs text-gray-500">{m.name}</span>}
+                      <span className="text-xs font-medium" style={{color:pc(t.priority)}}>{PRIO[t.priority]}</span>
+                      {t.dueDate&&<span className="text-xs text-gray-400">ð {t.dueDate}</span>}
+                    </div>
+                    {t.note&&<p className="text-xs text-gray-400 mt-1">{t.note}</p>}
+                  </div>
+                  <button onClick={()=>del(t.id)} className="text-gray-300 hover:text-red-400 text-lg flex-shrink-0 active:scale-95">â</button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      {showAdd&&(
+        <Modal title="ã¿ã¹ã¯ãè¿½å " onClose={()=>setShowAdd(false)}>
+          <FInput label="ã¿ã¤ãã« *" value={nt.title} onChange={e=>setNt({...nt,title:e.target.value})} placeholder="ã¿ã¹ã¯ã®åå®¹"/>
+          <FSelect label="ãã¼ã  *" value={nt.teamId} onChange={e=>setNt({...nt,teamId:e.target.value,memberId:''})}>
+            {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+          </FSelect>
+          <FSelect label="æå½è *" value={nt.memberId} onChange={e=>setNt({...nt,memberId:e.target.value})}>
+            <option value="">é¸æãã¦ãã ãã</option>
+            {data.members.filter(m=>m.teamId===nt.teamId||m.teamId==='top').map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+          </FSelect>
+          <div className="grid grid-cols-2 gap-3">
+            <FSelect label="åªååº¦" value={nt.priority} onChange={e=>setNt({...nt,priority:e.target.value})}>
+              <option value="high">ð´ é«</option><option value="mid">ð¡ ä¸­</option><option value="low">âª ä½</option>
+            </FSelect>
+            <FSelect label="ã¹ãã¼ã¿ã¹" value={nt.status} onChange={e=>setNt({...nt,status:e.target.value})}>
+              <option value="todo">ToDo</option><option value="inprogress">é²è¡ä¸­</option><option value="done">å®äº</option>
+            </FSelect>
+          </div>
+          <FInput label="æé" type="date" value={nt.dueDate} onChange={e=>setNt({...nt,dueDate:e.target.value})}/>
+          <FTextarea label="ã¡ã¢" value={nt.note} onChange={e=>setNt({...nt,note:e.target.value})} placeholder="è©³ç´°ã»åè..."/>
+          <Btn variant="primary" onClick={add} className="w-full">è¿½å ãã</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ââ MEETINGS âââââââââââââââââââââââââââââââââââââââââââââââââ
+function Meetings({data,update}){
+  const [view,setView]=useState('list');
+  const [det,setDet]=useState(null);
+  const [dr,setDr]=useState({title:'',date:'',startTime:'10:00',endTime:'11:00',location:'',attendeeIds:[],agenda:[]});
+  const [na,setNa]=useState({title:'',duration:15,owner:'',note:''});
+
+  const save=()=>{
+    if(!dr.title||!dr.date)return;
+    const m={id:uid(),title:dr.title,date:dr.date,startTime:dr.startTime,endTime:dr.endTime,location:dr.location||'',attendeeIds:dr.attendeeIds||[],agenda:dr.agenda||[],createdAt:new Date().toISOString()};
+    update({...data,meetings:[m,...data.meetings]});setView('list');
+  };
+  const addAg=()=>{
+    if(!na.title)return;
+    const item={id:uid(),title:na.title,duration:na.duration||15,owner:na.owner||'',note:na.note||''};
+    setDr({...dr,agenda:[...(dr.agenda||[]),item]});setNa({title:'',duration:15,owner:'',note:''});
+  };
+  const delM=(id)=>{update({...data,meetings:data.meetings.filter(m=>m.id!==id)});setView('list');};
+  const togAtt=(id)=>{const c=dr.attendeeIds||[];setDr({...dr,attendeeIds:c.includes(id)?c.filter(x=>x!==id):[...c,id]});};
+
+  if(view==='create') return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">â</button><h2 className="font-bold text-gray-900">ä¼è­°ãä½æ</h2></div>
+      <FInput label="ä¼è­°ã¿ã¤ãã« *" value={dr.title} onChange={e=>setDr({...dr,title:e.target.value})} placeholder="ä¾ï¼é±æ¬¡å¨ä½ãã¼ãã£ã³ã°"/>
+      <div className="grid grid-cols-3 gap-2">
+        <FInput label="æ¥ä» *" type="date" value={dr.date} onChange={e=>setDr({...dr,date:e.target.value})}/>
+        <FInput label="éå§" type="time" value={dr.startTime} onChange={e=>setDr({...dr,startTime:e.target.value})}/>
+        <FInput label="çµäº" type="time" value={dr.endTime} onChange={e=>setDr({...dr,endTime:e.target.value})}/>
+      </div>
+      <FInput label="å ´æ / URL" value={dr.location} onChange={e=>setDr({...dr,location:e.target.value})} placeholder="ä¾ï¼ã«ãã§ä¼è­°å®¤"/>
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-2">åå è</p>
+        <div className="flex flex-wrap gap-2">
+          {data.members.map(m=>{
+            const sel=(dr.attendeeIds||[]).includes(m.id);
+            return <button key={m.id} onClick={()=>togAtt(m.id)} className={`px-3 py-1.5 rounded-full text-xs border-2 transition-all ${sel?'bg-gray-900 text-white border-gray-900':'border-gray-200 text-gray-600'}`}>{m.name}</button>;
+          })}
+        </div>
+      </div>
+      <div>
+        <p className="text-xs font-medium text-gray-500 mb-2">ã¢ã¸ã§ã³ã</p>
+        {(dr.agenda||[]).map((a,i)=>(
+          <div key={a.id} className="flex items-center gap-2 bg-gray-50 rounded-xl p-2.5 mb-2">
+            <span className="text-xs text-gray-400 font-bold w-5">{i+1}</span>
+            <div className="flex-1"><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500">{a.duration}å{a.owner?' Â· '+a.owner:''}</p></div>
+            <button onClick={()=>setDr({...dr,agenda:dr.agenda.filter(x=>x.id!==a.id)})} className="text-gray-400 text-lg">â</button>
+          </div>
+        ))}
+        <div className="bg-blue-50 rounded-xl p-3 space-y-2">
+          <p className="text-xs font-bold text-blue-600">ï¼ ã¢ã¸ã§ã³ãé ç®ãè¿½å </p>
+          <FInput label="ã¿ã¤ãã«" value={na.title} onChange={e=>setNa({...na,title:e.target.value})} placeholder="ä¾ï¼åé±ã®æ¯ãè¿ã"/>
+          <div className="grid grid-cols-2 gap-2">
+            <FInput label="æéï¼åï¼" type="number" value={String(na.duration)} onChange={e=>setNa({...na,duration:parseInt(e.target.value)||15})}/>
+            <FInput label="æå½è" value={na.owner} onChange={e=>setNa({...na,owner:e.target.value})} placeholder="åå"/>
+          </div>
+          <FInput label="ã¡ã¢" value={na.note} onChange={e=>setNa({...na,note:e.target.value})} placeholder="è£è¶³"/>
+          <Btn variant="secondary" onClick={addAg} className="w-full">é ç®ãè¿½å </Btn>
+        </div>
+      </div>
+      <Btn variant="primary" onClick={save} className="w-full py-3">ä¼è­°ãä¿å­ãã</Btn>
+    </div>
+  );
+
+  if(view==='detail'&&det) return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">â</button><h2 className="font-bold text-gray-900 flex-1 truncate">{det.title}</h2></div>
+      <Card className="p-4 space-y-2">
+        <div className="flex gap-2 text-sm text-gray-600"><span>ð</span><span>{det.date} {det.startTime}ã{det.endTime}</span></div>
+        {det.location&&<div className="flex gap-2 text-sm text-gray-600"><span>ð</span><span>{det.location}</span></div>}
+        {det.attendeeIds.length>0&&<div className="flex gap-2 text-sm text-gray-600"><span>ð¥</span><span>{det.attendeeIds.map(id=>data.members.find(m=>m.id===id)?.name||id).join('ã')}</span></div>}
+      </Card>
+      {det.agenda.length>0&&(
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">ð ã¢ã¸ã§ã³ã</p></div>
+          {det.agenda.map((a,i)=>(
+            <div key={a.id} className="px-4 py-3 border-b border-gray-50 last:border-0 flex gap-3">
+              <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center flex-shrink-0 font-bold">{i+1}</span>
+              <div><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500 mt-0.5">{a.duration}å{a.owner?' Â· '+a.owner:''}{a.note?' Â· '+a.note:''}</p></div>
+            </div>
+          ))}
+          <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">åè¨ {det.agenda.reduce((s,a)=>s+a.duration,0)} å</div>
+        </Card>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <a href={gcalUrl(det)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">ð Googleã«ã¬ã³ãã¼</a>
+        <a href={gmailUrl(det,data.members)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">âï¸ ã¡ã¼ã«&#x1f;c²¯å±æ</a>
+      </div>
+      <Btn variant="danger" onClick={()=>delM(det.id)} className="w-full">ãã®ä¼è­°ãåé¤</Btn>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">ä¼è­°ã»ã¢ã¸ã§ã³ã</h2><Btn variant="primary" onClick={()=>{setDr({title:'',date:'',startTime:'10:00',endTime:'11:00',location:'',attendeeIds:[],agenda:[]});setView('create');}}>ï¼ æ°è¦ä½æ</Btn></div>
+      {data.meetings.length===0?(
+        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">ð</p><p className="text-sm">ä¼è­°ã¯ããã¾ãã</p></div>
+      ):(
+        <div className="space-y-3">
+          {data.meetings.map(m=>(
+            <Card key={m.id} className="p-4" onClick={()=>{setDet(m);setView('detail');}}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900">{m.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{m.date} {m.startTime}ã{m.endTime}</p>
+                  {m.location&&<p className="text-xs text-gray-400 mt-0.5">ð {m.location}</p>}
+                </div>
+                {m.agenda.length>0&&<span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex-shrink-0">{m.agenda.length}é ç®</span>}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ââ ORG CHART ââââââââââââââââââââââââââââââââââââââââââââââââ
+function OrgChart({data,update}){
+  const [editing,setEditing]=useState(null);
+  const [addTo,setAddTo]=useState(null);
+  const [nn,setNn]=useState({name:'',role:'',teamId:'cafe'});
+  const nodes=data.orgNodes;
+  const kids=(id)=>nodes.filter(n=>n.parentId===id);
+  const root=nodes.find(n=>n.parentId===null);
+
+  const saveEdit=()=>{
+    if(!editing)return;
+    update({...data,orgNodes:nodes.map(n=>n.id===editing.id?editing:n)});setEditing(null);
+  };
+  const delNode=(id)=>{
+    if(id==='top')return;
+    const rem=new Set();
+    const col=(nid)=>{rem.add(nid);kids(nid).forEach(c=>col(c.id));};col(id);
+    update({...data,orgNodes:nodes.filter(n=>!rem.has(n.id))});setEditing(null);
+  };
+  const addChild=()=>{
+    if(!nn.name||!addTo)return;
+    const n={id:uid(),name:nn.name,role:nn.role||'',teamId:nn.teamId||'cafe',parentId:addTo};
+    update({...data,orgNodes:[...nodes,n]});setAddTo(null);setNn({name:'',role:'',teamId:'cafe'});
+  };
+
+  function NodeBlock({node,depth}){
+    const t=TM[node.teamId];
+    const isRoot=!node.parentId;
+    const cs=kids(node.id);
+    return (
+      <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center">
+          {!isRoot&&<div className="w-px h-4 bg-gray-300"/>}
+          <button onClick={()=>setEditing({...node})} className="rounded-2xl px-3 py-2 text-center border-2 transition-all active:scale-95 w-24 relative" style={{borderColor:t?.accent||'#6b7280',background:isRoot?'#1e3a5f':(t?.bg||'#f9fafb')}}>
+            <div className="text-lg">{isRoot?'ð':(t?.emoji||'ð¤')}</div>
+            <p className="text-xs font-bold truncate" style={{color:isRoot?'white':(t?.accent||'#374151')}}>{node.name}</p>
+            <p className="text-xs truncate" style={{color:isRoot?'#93c5fd':'#9ca3af'}}>{node.role}</p>
+          </button>
+          <button onClick={()=>{setAddTo(node.id);setNn({name:'',role:'',teamId:t?.id||'cafe'});}} className="mt-1 w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-sm flex items-center justify-center hover:bg-gray-300 active:scale-95">ï¼</button>
+        </div>
+        {cs.length>0&&(
+          <div className="flex gap-3 mt-0 pt-1" style={{flexWrap:'nowrap'}}>
+            {cs.map(c=><NodeBlock key={c.id} node={c} depth={depth+1}/>)}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">çµç¹å³</h2><span className="text-xs text-gray-400">ãã¼ããã¿ãããã¦ç·¨é</span></div>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 overflow-auto">
+        <div className="min-w-max flex flex-col items-center pb-4">{root&&<NodeBlock node={root} depth={0}/>}</div>
+      </div>
+      {editing&&(
+        <Modal title="ã¡ã³ãã¼ãç·¨é" onClose={()=>setEditing(null)}>
+          <FInput label="åå" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}/>
+          <FInput label="å½¹è·ã»å½¹å²" value={editing.role} onChange={e=>setEditing({...editing,role:e.target.value})}/>
+          <FSelect label="ãã¼ã  " value={editing.teamId} onChange={e=>setEditing({...editing,teamId:e.target.value})}>
+            <option value="top">ä»£è¡¡</option>
+            {TEAMSht=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+          </FSelect>
+          <div className="flex gap-2">
+            <Btn variant="primary" onClick={saveEdit} className="flex-1">ä¿å­</Btn>
+            {editing.id!=='top'&&<Btn variant="danger" onClick={()=>delNode(editing.id)}>åé¤</Btn>}
+          </div>
+        </Modal>
+      )}
+      {addTo&&(
+        <Modal title="ã¡ã³ãã¼ãè¿½å " onClose={()=>setAddTo(null)}>
+          <FInput label="åå *" value={nn.name} onChange={e=>setNn({...nn,name:e.target.value})} placeholder="ä¾ï¼ã¡ã³ãã¼A"/>
+          <FInput label="å½¹è·ã»å½¹å²" value={nn.role} onChange={e=>setNn({...nn,role:e.target.value})} placeholder="ä¾ï¼æå½è"/>
+          <FSelect label="ãã¼ã " value={nn.teamId} onChange={e=>setNn({...nn,teamId:e.target.value})}>
+            {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+          </FSelect>
+          <Btn variant="primary" onClick={addChild} className="w-full">è¿½å ãã</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ââ SETTINGS ââââââââââââââââââââââââââââââââââââââââââââââââ
+function Settings({data,update}){
+  const [copied,setCopied]=useState(false);
+  const fRef=useRef(null);
+
+  const exportD=()=>{
+    const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const u=URL.createObjectURL(b);const a=document.createElement('a');
+    a.href=u;a.download=`org_${new Date().toISOString().slice(0,10)}.json`;a.click();
+    URL.revokeObjectURL(u);
+  };
+  const importD=(e)=>{
+    const f=e.target.files?.[0];if(!f)return;
+    const r=new FileReader();r.onload=(ev)=>{try{update(JSON.parse(ev.target.result));alert('ã¤ã³ãã¼ããã¾ãã');}catch{alert('ãã¡ã¤ã«å½¢å¼ãä¸æ­£ã§ã');}};r.readAsText(f);
+  };
+  const reset=()=>{if(confirm('å¨ãã¼ã¿ããªã»ãããã¾ããï¼')){update(JSON.parse(JSON.stringify(DEF)));localStorage.removeItem(SK);}};
+
+  const report=()=>{
+    const lines=[`ãçµç¹ããã·ã¥ãã¼ã æ¥æ¬¡ã¬ãã¼ãã\nð ${today()}\n`];
+    TEAMS.forEach(t=>{
+      const ds=data.dailyStatus[t.id];lines.push(`${t.emoji} ${t.label}ï¼${ds.status}`);
+      if(ds.note)lines.push(`  ç¶æ³ï¼${ds.note}`);
+      const p=ds.approvals.filter(a=>!a.done);
+      if(p.length)lines.push(`  æ¿èªå¾ã¡ï¼${p.map(a=>a.label).join('ã')}`);
+    });
+    const todo=data.tasks.filter(t=>t.status!=='done').length;
+    lines.push(`\nð æªå®äºã¿ã¹ã¯ï¼${todo}ä»¶`);
+    return lines.join('\n');
+  };
+  const shareG=()=>{window.open(`https://mail.google.com/mail/?view=cm&su=${encodeURIComponent('ãæ¥æ¬¡ã¬ãã¼ããçµç¹ããã·ã¥ãã¼ã')}&body=${encodeURIComponent(report())}`,'_blank');};
+  const copy=async()=>{await navigator.clipboard.writeText(report());setCopied(true);setTimeout(()=>setCopied(false),2000);};
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-bold text-gray-900">è¨­å®ã»å±æ</h2>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-bold text-gray-700">ð¤ æ¥æ¬¡ã¬ãã¼ããå±æ</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={shareG} className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">âï¸ Gmail ã§éä¿¡</button>
+          <button onClick={copy} className={`flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-medium active:scale-95 ${copied?'bg-green-500 text-white':'bg-gray-100 text-gray-700'}`}>{copied?'â ã³ãã¼æ¸ã¿':'ð ãã­ã¹ããã³ãã¼'}</button>
+        </div>
+      </Card>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm font-bold text-gray-700">ð ãã¼ã¿ã®åæï¼è¤æ°ããã¤ã¹ï¼</p>
+        <p className="text-xs text-gray-400">ä»ã®ããã¤ã¹ã§ããã¼ã¿ãä½¿ãå ´åã¯ãJSONã¨ã¯ã¹ãã¼ããã¦ç§»è¡åã§ã¤ã³ãã¼ããã¦ãã ããã</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={exportD} className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">â¬ï¸ ã¨ã¯ã¹ãã¼ã</button>
+          <button onClick={()=>fRef.current?.click()} className="flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">â¬ï¸ ã¤ã³ãã¼ã</button>
+        </div>
+        <input ref={fRef} type="file" accept=".json" className="hidden" onChange={importD}/>
+      </Card>
+      <Card className="p-4 space-y-2">
+        <p className="text-sm font-bold text-gray-700">ð çµ±è¨</p>
+        <div className="text-xs text-gray-400 space-y-1">
+          <p>ã¿ã¹ã¯ï¼{data.tasks.length}ä»¶ï¼æªå®äº {data.tasks.filter(t=>t.status!=='done').length}ä»¶ï¼</p>
+          <p>ä¼è­°ï¼{data.meetings.length}ä»¶ ï¼ ã¡ã³ãã¼ï¼{data.members.length}å</p>
+        </div>
+      </Card>
+      <button onClick={reset} className="w-full py-3 rounded-2xl border-2 border-red-200 text-red-400 text-sm font-medium active:scale-95">â ï¸ å¨ãã¼ã¿ããªã»ãã</button>
+    </div>
+  );
+}
+
+// ââ APP SHELL ââââââââââââââââââââââââââââââââââââââââââââââââ
+const NAV=[
+  {id:'overview',emoji:'ð ',label:'æ¦è¦'},
+  {id:'tasks',   emoji:'â',label:'ã¿ã¹ã¯'},
+  {id:'meetings',emoji:'ð',label:'ä¼è­°'},
+  {id:'org',     emoji:'ð¥',label:'çµç¹å³'},
+  {id:'settings',emoji:'âï¸',label:'è¨­å®'},
+];
+
+function App(){
+  const [screen,setScreen]=useState('overview');
+  const [data,setData]=useState(DEF);
+  const [ready,setReady]=useState(false);
+
+  useEffect(()=>{setData(loadD());setReady(true);},[]);
+  const update=useCallback((d)=>{setData(d);saveD(d);},[]);
+
+  const penApr=ready?TEAMS.reduce((s,t)=>s+data.dailyStatus[t.id].approvals.filter(a=>!a.done).length,0):0;
+  const penTask=ready?data.tasks.filter(t=>t.status!=='done').length:0;
+
+  if(!ready)return(
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center"><div className="text-5xl mb-4 animate-bounce">ð¢</div><p className="text-gray-400 text-sm">èª­ã¿è¾¼ã¿ä¸­...</p></div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col" style={{maxWidth:'480px',margin:'0 auto',position:'relative'}}>
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
+        <div>
+          <h1 className="font-bold text-gray-900">çµç¹ããã·ã¥ãã¼ã</h1>
+          <p className="text-xs text-gray-400">{today()}</p>
+        </div>
+        {penApr>0&&<span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{penApr}ä»¶ æ¿èªå¾ã¡</span>}
+      </header>
+
+      {/* Content */}
+      <main className="flex-1 p-4 pb-24">
+        {screen==='overview' &&<Overview  data={data} update={update}/>}
+        {screen==='tasks'    &&<Tasks     data={data} update={update}/>}
+        {screen==='meetings' &&<Meetings  data={data} update={update}/>}
+        {screen==='org'      &&<OrgChart  data={data} update={update}/>}
+        {screen==='settings' &&<Settings  data={data} update={update}/>}
+      </main>
+
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-10" style={{maxWidth:'480px',left:'50%',transform:'translateX(-50%)',width:'100%',boxShadow:'0 -1px 8px rgba(0,0,0,0.06)'}}>
+        <div className="flex">
+          {NAV.map(n=>{
+            const act=screen===n.id;
+            const badge=n.id==='overview'?penApr:n.id==='tasks'?penTask:0;
+            return (
+              <button key={n.id} onClick={()=>setScreen(n.id)} className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 relative transition-colors ${act?'text-gray-900':'text-gray-400'}`}>
+                {badge>0&&!act&&<span className="absolute top-1 right-1/4 bg-red-500 text-white font-bold w-4 h-4 rounded-full flex items-center justify-center" style={{fontSize:'9px'}}>{badge}</span>}
+                <span className="text-xl">{n.emoji}</span>
+                <span className="text-xs font-medium">{n.label}</span>
+                {act&&<div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-gray-900 rounded-full"/>}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
