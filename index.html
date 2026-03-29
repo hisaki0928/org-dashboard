@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>çµç¹ããã·ã¥ãã¼ã</title>
+<title>組織ダッシュボード</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -23,60 +23,60 @@ input,textarea,select{font-size:16px!important}
 <script type="text/babel" data-presets="react">
 const {useState,useEffect,useCallback,useRef,useMemo} = React;
 
-// ââ CONSTANTS ââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── CONSTANTS ────────────────────────────────────────────────
 const TEAMS = [
-  {id:'cafe', label:'ã«ãã§',   emoji:'â', accent:'#f97316',bg:'#fff7ed',border:'#fed7aa'},
-  {id:'video',label:'åç»ç·¨é', emoji:'ð¬', accent:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0'},
-  {id:'sns',  label:'SNS',      emoji:'ð±', accent:'#2563eb',bg:'#eff6ff',border:'#bfdbfe'},
-  {id:'enq',  label:'En-Q',     emoji:'ð¤', accent:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe'},
+  {id:'cafe', label:'カフェ',   emoji:'☕', accent:'#f97316',bg:'#fff7ed',border:'#fed7aa'},
+  {id:'video',label:'動画編集', emoji:'🎬', accent:'#16a34a',bg:'#f0fdf4',border:'#bbf7d0'},
+  {id:'sns',  label:'SNS',      emoji:'📱', accent:'#2563eb',bg:'#eff6ff',border:'#bfdbfe'},
+  {id:'enq',  label:'En-Q',     emoji:'🤝', accent:'#7c3aed',bg:'#f5f3ff',border:'#ddd6fe'},
 ];
 const TM = Object.fromEntries(TEAMS.map(t=>[t.id,t]));
-const STATUS_OPT = ['ð¢ é èª¿','ð¡ è¦æ³¨æ','ð´ åé¡ãã','â¬ æªç¢ºèª'];
-const PRIO = {high:'ð´ é«',mid:'ð¡ ä¸­',low:'âª ä½'};
-const STAT = {todo:'ToDo',inprogress:'é²è¡ä¸­',done:'å®äº'};
+const STATUS_OPT = ['🟢 順調','🟡 要注意','🔴 問題あり','⬜ 未確認'];
+const PRIO = {high:'🔴 高',mid:'🟡 中',low:'⚪ 低'};
+const STAT = {todo:'ToDo',inprogress:'進行中',done:'完了'};
 const KPI_F = {
-  cafe: [{id:'sales',label:'å£²ä¸',unit:'ä¸å'},{id:'guests',label:'å®¢æ°',unit:'äºº'},{id:'complaints',label:'ã¯ã¬ã¼ã ',unit:'ä»¶'}],
-  video:[{id:'orders',label:'æ¡ä»¶å®äº',unit:'ä»¶'},{id:+qcPass',label:'QCééç',unit:'%'},{id:'leadTime',label:'å¹³åç´æ',unit:'æ¥'}],
-  sns:  [{id:'followers',label:'ãã©ã­ã¯ã¼å¢',unit:'äºº'},{id:'engage',label:'ã¨ã³ã²ã¼ã¸ç',unit:'%'},{id:'posts',label:'æç¨¿æ°',unit:'ä»¶'}],
-  enq:  [{id:'matches',label:'ãããã³ã°',unit:'ä»¶'},{id:'members',label:'ã¡ã³ãã¼¦°',unit:'å'},{id:'hours',label:'ä»£è¡¨å·¥æ°',unit:'h'}],
+  cafe: [{id:'sales',label:'売上',unit:'万円'},{id:'guests',label:'客数',unit:'人'},{id:'complaints',label:'クレーム',unit:'件'}],
+  video:[{id:'orders',label:'案件完了',unit:'件'},{id:+qcPass',label:'QC通過率',unit:'%'},{id:'leadTime',label:'平均納期',unit:'日'}],
+  sns:  [{id:'followers',label:'フォロワー増',unit:'人'},{id:'engage',label:'エンゲージ率',unit:'%'},{id:+posts',label:'投稿数',unit:'件'}],
+  enq:  [{id:'matches',label:'マッチング',unit:'件'},{id:'members',label:'メンバー数',unit:'名'},{id:'hours',label:'代表工数',unit:'h'}],
 };
 const DEF_APR = {
-  cafe: [{id:'c1',label:'ã·ããç¢ºå®ã®ç¢ºèª',done:false},{id:'c2',label:'ã¡ãã¥ã¼å¤æ´ã®æçµæ¿èª',done:false},{id:'c3',label:'æ°ã³ã¢ã¡ã³ãã¼æ¡ç¨å¤æ­',done:false}],
-  video:[{id:'v1',label:'åè³ªåºæºæ¸ã®æ´æ°ç¢ºèª',done:false},{id:'v2',label:'ææ ¼å ±åã®åãåã',done:false},{id:'v3',label:'å¤é¨æ¡ä»¶ã®åæ³¨å¯å¦å¤æ­',done:false}],
-  sns:  [{id:'s1',label:'ä»é±ã®SNSæç¨¿ãæ¿èª',done:false},{id:'s2',label:'ã³ã³ã»ããã·ã¼ãç¢ºèª',done:false},{id:'s3',label:'æ°ã¢ã«ã¦ã³ãéè¨­æ¿èª',done:false}],
-  enq:  [{id:'e1',label:'ææ¬¡ã¬ãã¼ãã®ç¢ºèª',done:false},{id:'e2',label:'éè¦å¤é¨é£æºã®å¤æ­',done:false},{id:'e3',label:'é¤åã»éå¤§äºé ã®å¤æ­',done:false}],
+  cafe: [{id:'c1',label:'シフト確定の確認',done:false},{id:'c2',label:'メニュー変更の最終承認',done:false},{id:'c3',label:'新コアメンバヶ採用判断',done:false}],
+  video:[{id:'v1',label:'品質基準書の更新確認',done:false},{id:'v2',label:'昇格報告の受け取り',done:false},{id:'v3',label:'外部案件の受注可否判断',done:false}],
+  sns:  [{id:'s1',label:'今週のSNS投稿を承認',done:false},{id:'s2',label:'コンセプトシート確認',done:false},{id:'s3',label:'新アカウント開設承認',done:false}],
+  enq:  [{id:'e1',label:'月次レポートの確認',done:false},{id:'e2',label:'重要外部連携の判断',done:false},{id:'e3',label:'除名・重大事項の判断',done:false}],
 };
 const DEF_MEMBERS = [
-  {id:'top',name:'ç·åä»£è¡¨ï¼ä¿ºï¼',role:'ç·åä»£è¡¨',teamId:'top'},
-  {id:'m1',name:'ãµããªã¼ãã¼',role:'å¾ç¶èã»ç¾å ´è²¬ä»»è',teamId:'cafe'},
-  {id:'m2',name:'ã³ã¢ã¡ã³ãã¼A',role:'ã³ã¢ã¡ã³ãã¼',teamId:'cafe'},
-  {id:'m3',name:'ã³ã¢ã¡ã³ãã¼B',role:'ã³ã¢ã¡ã³ãã¼',teamId:'cafe'},
-  {id:'m4',name:'åç»ãªã¼ãã¼',role:'å¨æ¨©å§ä»»ãªã¼ãã¼',teamId:'video'},
-  {id:'m5',name:'æ¥­åå§è¨A',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video'},
-  {id:'m6',name:'æ¥­åå§è¨B',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video'},
-  {id:'m7',name:'SNSãµã',role:'ãµãâãªã¼ãã¼ææ ¼äºå®',teamId:'sns'},
-  {id:'m8',name:'SNSã¡ã³ãã¼A',role:'æå½è',teamId:'sns'},
-  {id:'m9',name:'SNSã¡ã³ãã¼B',role:'æå½è',teamId:'sns'},
-  {id:'m10',name:'å±åä»£è¡¨A',role:'En-Qæ¥å¸¸éå¶',teamId:'enq'},
-  {id:'m11',name:'å±åä»£è¡¨B',role:'En-Qæ¥å¸¸éå¶',teamId:'enq'},
+  {id:'top',name:'総合代表（俺）',role:'総合代表',teamId:'top'},
+  {id:'m1',name:'サブオーナー',role:'後継者・現場責任者',teamId:'cafe'},
+  {id:'m2',name:'コアメンバーA',role:'コアメンバー',teamId:'cafe'},
+  {id:'m3',name:'コアメンバーB',role:'コアメンバー',teamId:'cafe'},
+  {id:'m4',name:'動画リーダー',role:'全権委任リーダー',teamId:'video'},
+  {id:'m5',name:'業務委託A',role:'正規メンバー',teamId:'video'},
+  {id:'m6',name:'業務委託B',role:'正規メンバー',teamId:'video'},
+  {id:'m7',name:'SNSサブ',role:'サブ→リーダー昇格予定',teamId:'sns'},
+  {id:'m8',name:'SNSメンバーA',role:'担当者',teamId:'sns'},
+  {id:'m9',name:'SNSメンバーB',role:'担当者',teamId:'sns'},
+  {id:'m10',name:'共同代表A',role:'En-Q日常運営',teamId:'enq'},
+  {id:'m11',name:'共同代表B',role:'En-Q日常運営',teamId:'enq'},
 ];
 const DEF_ORG = [
-  {id:'top',name:'ç·åä»£è¡¨ï¼ä¿ºï¼',role:'ä¸æµã®ã¿åå ',teamId:'top',parentId:null},
-  {id:'n1',name:'ãµããªã¼ãã¼',role:'å¾ç¶èã»ç¾å ´è²¬ä»»è',teamId:'cafe',parentId:'top'},
-  {id:'n2',name:'ã³ã¢ã¡ã³ãã¼A',role:'ç¾å ´ãªã¼ãã¼è£ä½',teamId:'cafe',parentId:'n1'},
-  {id:'n3',name:'ã³ã¢ã¡ã³ãã¼B',role:'ç¾å ´ãªã¼ãã¼è£ä½',teamId:'cafe',parentId:'n1'},
-  {id:'n4',name:'åç»ãªã¼ãã¼',role:'å¨æ¨©å§ä»·ãªã¼ãã¼',teamId:'video',parentId:'top'},
-  {id:'n5',name:'æ¥­åå§è¨A',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video',parentId:'n4'},
-  {id:'n6',name:'æ¥­åå§è¨B',role:'æ­£è¦ã¡ã³ãã¼',teamId:'video',parentId:'n4'},
-  {id:'n7',name:'SNSãµã',role:'ãµãâãªã¼ãã¼ææ ¼äºå®',teamId:'sns',parentId:'top'},
-  {id:'n8',name:'SNSã¡ã³ãã¼A',role:'æå½è',teamId:'sns',parentId:'n7'},
-  {id:'n9',name:'SNSã¡ã³ãã¼B',role:'æå½è',teamId:'sns',parentId:'n7'},
-  {id:'n10',name:'å±åä»£è¡¨A',role:'En-Qæ¥å¸¸éå¶',teamId:'enq',parentId:'top'},
-  {id:'n11',name:'å±åä»£è¡¨B',role:'En-Qæ¥å¸¸éå¶',teamId:'enq',parentId:'n10'},
+  {id:'top',name:'総合代表（俺）',role:'上流のみ参加',teamId:'top',parentId:null},
+  {id:'n1',name:'サブオーナー',role:'後継者・現場責任者',teamId:'cafe',parentId:'top'},
+  {id:'n2',name:'コアメンバーA',role:'現場リーダー補佐',teamId:'cafe',parentId:'n1'},
+  {id:'n3',name:'コアメンバーB',role:'現場リーダー補佐',teamId:'cafe',parentId:'n1'},
+  {id:'n4',name:'動画リーダー',role:'全権委任リーダー',teamId:'video',parentId:'top'},
+  {id:'n5',name:'業務委託A',role:'正規メンバー',teamId:'video',parentId:'n4'},
+  {id:'n6',name:'業務委託B',role:'正規メンバー',teamId:'video',parentId:'n4'},
+  {id:'n7',name:'SNSサブ',role:'サブ→リーダー昇格予定',teamId:'sns',parentId:'top'},
+  {id:'n8',name:'SNSメンバーA',role:'担当者',teamId:'sns',parentId:'n7'},
+  {id:'n9',name:'SNSメンバーB',role:'担当者',teamId:'sns',parentId:'n7'},
+  {id:'n10',name:'共同代表A',role:'En-Q日常運営',teamId:'enq',parentId:'top'},
+  {id:'n11',name:'共同代表B',role:'En-Q日常運営',teamId:'enq',parentId:'n10'},
 ];
 function mkStatus(){
   const r={};
-  TEAMS.forEach(t=>{r[t.id]={teamId:t.id,status:'â¬ æªç¢ºèª',note:'',memo:'',kpi:{},approvals:DEF_APR[t.id].map(a=>({...a}))};});
+  TEAMS.forEach(t=>{r[t.id]={teamId:t.id,status:'⬜ 未確認',note:'',memo:'',kpi:{},approvals:DEF_APR[t.id].map(a=>({...a}))};});
   return r;
 }
 const DEF = {members:DEF_MEMBERS,tasks:[],meetings:[],orgNodes:DEF_ORG,dailyStatus:mkStatus()};
@@ -89,16 +89,16 @@ function saveD(d){try{localStorage.setItem(SK,JSON.stringify(d));}catch{}}
 function today(){return new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});}
 function toGCal(date,time){return date.replace(/-/g,'')+'T'+time.replace(':','')+'00';}
 function gcalUrl(m){
-  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title}ï¼${a.duration}åï¼${a.note?' - '+a.note:''}`).join('\n');
-  return `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(m.title)}&dates=${toGCal(m.date,m.startTime)}/${toGCal(m.date,m.endTime)}&details=${encodeURIComponent('ð ã¢ã¸ã§ã³ã\n'+agenda)}&location=${encodeURIComponent(m.location||'')}`;
+  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title}（${a.duration}分）${a.note?' - '+a.note:''}`).join('\n');
+  return `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(m.title)}&dates=${toGCal(m.date,m.startTime)}/${toGCal(m.date,m.endTime)}&details=${encodeURIComponent('📋 アジェンダ\n'+agenda)}&location=${encodeURIComponent(m.location||'')}`;
 }
 function gmailUrl(m,members){
-  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title|ï¼${a.duration}åï¼æå½ï¼${a.owner}${a.note?' / '+a.note:''}`).join('\n');
-  const body=`ãä¼è­°ã${m.title}\nð ${m.date} ${m.startTime}ã${m.endTime}\nð ${m.location||'æªè¨­å®'}\n\nð ã¢ã¸ã§ã³ã\n${agenda}\n\nåå èï¼${m.attendeeIds.map(id=>members.find(x=>x.id===id)?.name||id).join('ã')}`;
-  return `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(`ãä¼è­°ã${m.title} - ${m.date}`)}&body=${encodeURIComponent(body)}`;
+  const agenda=m.agenda.map((a,i)=>`${i+1}. ${a.title}（${a.duration}分）担当：${a.owner}${a.note?' / '+a.note:''}`).join('\n');
+  const body=`【会議】${m.title}\n📅 ${m.date} ${m.startTime}〜${m.endTime}\n📍 ${m.location||'未設定'}\n\n📋 アジェンダ\n${agenda}\n\n参加者：${m.attendeeIds.map(id=>members.find(x=>x.id===id)?.name||id).join('、')}`;
+  return `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(`【会議】${m.title} - ${m.date}`)}&body=${encodeURIComponent(body)}`;
 }
 
-// ââ UI PRIMITIVES ââââââââââââââââââââââââââââââââââââââââââââ
+// ── UI PRIMITIVES ─────────────────────────────────────────────
 function Card({children,style,onClick,className=''}){
   return <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${onClick?'cursor-pointer active:scale-95 transition-transform':''} ${className}`} style={style} onClick={onClick}>{children}</div>;
 }
@@ -108,7 +108,7 @@ function Modal({title,onClose,children}){
       <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
         <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100 z-10">
           <h3 className="font-bold text-gray-900 text-base">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-lg flex items-center justify-center">â</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-lg flex items-center justify-center">✕</button>
         </div>
         <div className="px-5 py-4 space-y-3">{children}</div>
       </div>
@@ -123,7 +123,7 @@ function Btn({children,onClick,variant='primary',className=''}){
   return <button onClick={onClick} className={`px-4 py-2.5 rounded-xl text-sm font-medium active:scale-95 transition-transform ${c[variant]||c.primary} ${className}`}>{children}</button>;
 }
 
-// ââ OVERVIEW ââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── OVERVIEW ──────────────────────────────────────────────────
 function Overview({data,update}){
   const [at,setAt]=useState(null);
   const ds=data.dailyStatus;
@@ -137,13 +137,13 @@ function Overview({data,update}){
   return (
     <div className="space-y-4">
       <div className={`rounded-2xl p-4 flex items-center gap-3 ${tot>0?'bg-red-50 border border-red-200':'bg-green-50 border border-green-200'}`}>
-        <span className="text-3xl">{tot>0?'â ï¸':'â'}</span>
+        <span className="text-3xl">{tot>0?'⚠️':'✅'}</span>
         <div>
-          <p className="font-bold text-gray-900">{tot>0?`æ¿èªå¾ã¡ ${tot} ä»¶`:'æ¿èªå¾ã¡ãªã'}</p>
+          <p className="font-bold text-gray-900">{tot>0?`承認待ち ${tot} 件`:'承認待ちなし'}</p>
           <p className="text-xs text-gray-500">{today()}</p>
         </div>
       </div>
-      {enqH>=2&&<div className="bg-red-50 border border-red-300 rounded-2xl p-3"><p className="font-bold text-red-600 text-sm">â ï¸ En-Q å·¥æ°ã¢ã©ã¼ãï¼{enqH}hï¼ç®æ¨2hä»¥åï¼</p><p className="text-red-500 text-xs mt-0.5">å±åä»£è¡¨ã«å§è­²ãæ¤è¨ãã¦ãã ãã</p></div>}
+      {enqH>=2&&<div className="bg-red-50 border border-red-300 rounded-2xl p-3"><p className="font-bold text-red-600 text-sm">⚠️ En-Q 工数アラート：{enqH}h（目標2h以内）</p><p className="text-red-500 text-xs mt-0.5">共同代表に委譲を検討してください</p></div>}
       <div className="grid grid-cols-2 gap-3">
         {TEAMS.map(t=>{
           const d=ds[t.id],p=pen(t.id);
@@ -160,7 +160,7 @@ function Overview({data,update}){
       </div>
       {tot>0&&(
         <Card className="overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">ð æ¿èªå¾ã¡ä¸è¦§</p></div>
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">📋 承認待ち一覧</p></div>
           {TEAMS.map(t=>{
             const p=ds[t.id].approvals.filter(a=>!a.done);
             if(!p.length)return null;
@@ -176,22 +176,22 @@ function Overview({data,update}){
       {at&&(()=>{
         const t=TM[at],d=ds[at];
         return (
-          <Modal title={`${t.emoji} ${t.label}ãã¼ã `} onClose={()=>setAt(null)}>
+          <Modal title={`${t.emoji} ${t.label}チーム`} onClose={()=>setAt(null)}>
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">ã¹ãã¼ã¿ã¹</p>
+              <p className="text-xs font-medium text-gray-500 mb-2">ステータス</p>
               <div className="grid grid-cols-2 gap-2">
                 {STATUS_OPT.map(s=>(
                   <button key={s} onClick={()=>set(at,'status',s)} className={`py-2 rounded-xl text-sm border-2 transition-all ${d.status===s?'font-bold':'border-gray-200 text-gray-500 bg-white'}`} style={d.status===s?{borderColor:t.accent,background:t.bg}:{}}>{s}</button>
                 ))}
               </div>
             </div>
-            <FTextarea label="ä»æ¥ã®ç¶æ³" value={d.note} onChange={e=>set(at,'note',e.target.value)} placeholder="ä»æ¥ã®ç¶æ³ãä¸è¨ã§..."/>
+            <FTextarea label="今日の状況" value={d.note} onChange={e=>set(at,'note',e.target.value)} placeholder="今日の状況を一言で..."/>
             <div>
-              <p className="text-xs font-medium text-gray-500 mb-2">æ¿èªã»ã¿ã¹ã¯æ¶è¾¼ã¿</p>
+              <p className="text-xs font-medium text-gray-500 mb-2">承認・タスク消込み</p>
               {d.approvals.map(a=>(
                 <label key={a.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-xl hover:bg-gray-50" onClick={()=>toggleApr(at,a.id)}>
                   <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0" style={{borderColor:a.done?t.accent:'#d1d5db',background:a.done?t.bg:'white'}}>
-                    {a.done&&<span className="text-xs font-bold" style={{color:t.accent}}>â</span>}
+                    {a.done&&<span className="text-xs font-bold" style={{color:t.accent}}>✓</span>}
                   </div>
                   <span className={`text-sm ${a.done?'line-through text-gray-400':'text-gray-700'}`}>{a.label}</span>
                 </label>
@@ -204,15 +204,15 @@ function Overview({data,update}){
                   <div key={f.id}>
                     <label className="text-xs text-gray-400">{f.label}</label>
                     <div className="flex items-center gap-1 mt-0.5">
-                      <input type="number" className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm min-w-0 focus:outline-none focus:ring-1" placeholder="â" value={d.kpi[f.id]||''} onChange={e=>setKpi(at,f.id,e.target.value)}/>
+                      <input type="number" className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm min-w-0 focus:outline-none focus:ring-1" placeholder="—" value={d.kpi[f.id]||''} onChange={e=>setKpi(at,f.id,e.target.value)}/>
                       <span className="text-xs text-gray-400">{f.unit}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <FTextarea label="åé¡ã»æ°ã«ãªããã¨" value={d.memo} onChange={e=>set(at,'memo',e.target.value)} placeholder="æ°ã«ãªããã¨ã»æç¤ºäºé ãªã©..."/>
-            <Btn variant="primary" onClick={()=>setAt(null)} className="w-full">ä¿å­ãã¦éãã</Btn>
+            <FTextarea label="問題・気になること" value={d.memo} onChange={e=>set(at,'memo',e.target.value)} placeholder="気になること・指示事項など..."/>
+            <Btn variant="primary" onClick={()=>setAt(null)} className="w-full">保存して閉じる</Btn>
           </Modal>
         );
       })()}
@@ -220,7 +220,7 @@ function Overview({data,update}){
   );
 }
 
-// ââ TASKS ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── TASKS ────────────────────────────────────────────────────
 function Tasks({data,update}){
   const [showAdd,setShowAdd]=useState(false);
   const [ft,setFt]=useState('all');
@@ -247,7 +247,7 @@ function Tasks({data,update}){
     <div className="space-y-4">
       {Object.keys(load).length>0&&(
         <Card className="p-4">
-          <p className="text-sm font-bold text-gray-700 mb-3">ð¤ ã¡ã³ãã¼å¥ã¿ã¹ã¯éï¼æªå®äºï¼</p>
+          <p className="text-sm font-bold text-gray-700 mb-3">👤 メンバー別タスク量（未完了）</p>
           <div className="space-y-2">
             {Object.entries(load).sort((a,b)=>b[1]-a[1]).map(([mid,cnt])=>{
               const m=gm(mid),tm=m?TM[m.teamId]:null;
@@ -267,19 +267,19 @@ function Tasks({data,update}){
       )}
       <div className="flex items-center gap-2">
         <select className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" value={ft} onChange={e=>setFt(e.target.value)}>
-          <option value="all">å¨ãã¼ã </option>
+          <option value="all">全チーム</option>
           {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
         </select>
         <select className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none" value={fs} onChange={e=>setFs(e.target.value)}>
-          <option value="all">å¨ã¹ãã¼ã¿ã¹</option>
+          <option value="all">全ステータス</option>
           <option value="todo">ToDo</option>
-          <option value="inprogress">é²è¡ä¸­</option>
-          <option value="done">å®äº</option>
+          <option value="inprogress">進行中</option>
+          <option value="done">完了</option>
         </select>
-        <button onClick={()=>setShowAdd(true)} className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-xl flex-shrink-0 active:scale-95">ï¼</button>
+        <button onClick={()=>setShowAdd(true)} className="w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center text-xl flex-shrink-0 active:scale-95">＋</button>
       </div>
       {tasks.length===0?(
-        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">â</p><p className="text-sm">ã¿ã¹ã¯ã¯ããã¾ãã</p></div>
+        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">✅</p><p className="text-sm">タスクはありません</p></div>
       ):(
         <div className="space-y-2">
           {tasks.map(t=>{
@@ -289,7 +289,7 @@ function Tasks({data,update}){
               <Card key={t.id} className="p-3">
                 <div className="flex items-start gap-3">
                   <button onClick={()=>setS(t.id,nxtS)} className="w-6 h-6 rounded-full border-2 flex-shrink-0 mt-0.5 transition-all flex items-center justify-center" style={{borderColor:sc[t.status],background:t.status==='done'?sc[t.status]:'white'}}>
-                    {t.status!=='todo'&&<span className="text-xs text-white font-bold">{t.status==='done'?'â':'â'}</span>}
+                    {t.status!=='todo'&&<span className="text-xs text-white font-bold">{t.status==='done'?'✓':'●'}</span>}
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${t.status==='done'?'line-through text-gray-400':'text-gray-800'}`}>{t.title}</p>
@@ -297,11 +297,11 @@ function Tasks({data,update}){
                       <span className="text-xs px-1.5 py-0.5 rounded-full" style={{background:tm?.bg,color:tm?.accent}}>{tm?.emoji} {tm?.label}</span>
                       {m&&<span className="text-xs text-gray-500">{m.name}</span>}
                       <span className="text-xs font-medium" style={{color:pc(t.priority)}}>{PRIO[t.priority]}</span>
-                      {t.dueDate&&<span className="text-xs text-gray-400">ð {t.dueDate}</span>}
+                      {t.dueDate&&<span className="text-xs text-gray-400">📅 {t.dueDate}</span>}
                     </div>
                     {t.note&&<p className="text-xs text-gray-400 mt-1">{t.note}</p>}
                   </div>
-                  <button onClick={()=>del(t.id)} className="text-gray-300 hover:text-red-400 text-lg flex-shrink-0 active:scale-95">â</button>
+                  <button onClick={()=>del(t.id)} className="text-gray-300 hover:text-red-400 text-lg flex-shrink-0 active:scale-95">✕</button>
                 </div>
               </Card>
             );
@@ -309,33 +309,33 @@ function Tasks({data,update}){
         </div>
       )}
       {showAdd&&(
-        <Modal title="ã¿ã¹ã¯ãè¿½å " onClose={()=>setShowAdd(false)}>
-          <FInput label="ã¿ã¤ãã« *" value={nt.title} onChange={e=>setNt({...nt,title:e.target.value})} placeholder="ã¿ã¹ã¯ã®åå®¹"/>
-          <FSelect label="ãã¼ã  *" value={nt.teamId} onChange={e=>setNt({...nt,teamId:e.target.value,memberId:''})}>
+        <Modal title="タスクを追加" onClose={()=>setShowAdd(false)}>
+          <FInput label="タイトル *" value={nt.title} onChange={e=>setNt({...nt,title:e.target.value})} placeholder="タスクの内容"/>
+          <FSelect label="チーム *" value={nt.teamId} onChange={e=>setNt({...nt,teamId:e.target.value,memberId:''})}>
             {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
           </FSelect>
-          <FSelect label="æå½è *" value={nt.memberId} onChange={e=>setNt({...nt,memberId:e.target.value})}>
-            <option value="">é¸æãã¦ãã ãã</option>
+          <FSelect label="担当者 *" value={nt.memberId} onChange={e=>setNt({...nt,memberId:e.target.value})}>
+            <option value="">選択してください</option>
             {data.members.filter(m=>m.teamId===nt.teamId||m.teamId==='top').map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
           </FSelect>
           <div className="grid grid-cols-2 gap-3">
-            <FSelect label="åªååº¦" value={nt.priority} onChange={e=>setNt({...nt,priority:e.target.value})}>
-              <option value="high">ð´ é«</option><option value="mid">ð¡ ä¸­</option><option value="low">âª ä½</option>
+            <FSelect label="優先度" value={nt.priority} onChange={e=>setNt({...nt,priority:e.target.value})}>
+              <option value="high">🔴 高</option><option value="mid">🟡 中</option><option value="low">⚪ 低</option>
             </FSelect>
-            <FSelect label="ã¹ãã¼ã¿ã¹" value={nt.status} onChange={e=>setNt({...nt,status:e.target.value})}>
-              <option value="todo">ToDo</option><option value="inprogress">é²è¡ä¸­</option><option value="done">å®äº</option>
+            <FSelect label="ステータス" value={nt.status} onChange={e=>setNt({...nt,status:e.target.value})}>
+              <option value="todo">ToDo</option><option value="inprogress">進行中</option><option value="done">完了</option>
             </FSelect>
           </div>
-          <FInput label="æé" type="date" value={nt.dueDate} onChange={e=>setNt({...nt,dueDate:e.target.value})}/>
-          <FTextarea label="ã¡ã¢" value={nt.note} onChange={e=>setNt({...nt,note:e.target.value})} placeholder="è©³ç´°ã»åè..."/>
-          <Btn variant="primary" onClick={add} className="w-full">è¿½å ãã</Btn>
+          <FInput label="期限" type="date" value={nt.dueDate} onChange={e=>setNt({...nt,dueDate:e.target.value})}/>
+          <FTextarea label="メモ" value={nt.note} onChange={e=>setNt({...nt,note:e.target.value})} placeholder="詳細・備考..."/>
+          <Btn variant="primary" onClick={add} className="w-full">追加する</Btn>
         </Modal>
       )}
     </div>
   );
 }
 
-// ââ MEETINGS âââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── MEETINGS ─────────────────────────────────────────────────
 function Meetings({data,update}){
   const [view,setView]=useState('list');
   const [det,setDet]=useState(null);
@@ -357,16 +357,16 @@ function Meetings({data,update}){
 
   if(view==='create') return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">â</button><h2 className="font-bold text-gray-900">ä¼è­°ãä½æ</h2></div>
-      <FInput label="ä¼è­°ã¿ã¤ãã« *" value={dr.title} onChange={e=>setDr({...dr,title:e.target.value})} placeholder="ä¾ï¼é±æ¬¡å¨ä½ãã¼ãã£ã³ã°"/>
+      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">←</button><h2 className="font-bold text-gray-900">会議を作成</h2></div>
+      <FInput label="会議タイトル *" value={dr.title} onChange={e=>setDr({...dr,title:e.target.value})} placeholder="例：週次全体ミーティング"/>
       <div className="grid grid-cols-3 gap-2">
-        <FInput label="æ¥ä» *" type="date" value={dr.date} onChange={e=>setDr({...dr,date:e.target.value})}/>
-        <FInput label="éå§" type="time" value={dr.startTime} onChange={e=>setDr({...dr,startTime:e.target.value})}/>
-        <FInput label="çµäº" type="time" value={dr.endTime} onChange={e=>setDr({...dr,endTime:e.target.value})}/>
+        <FInput label="日付 *" type="date" value={dr.date} onChange={e=>setDr({...dr,date:e.target.value})}/>
+        <FInput label="開始" type="time" value={dr.startTime} onChange={e=>setDr({...dr,startTime:e.target.value})}/>
+        <FInput label="終了" type="time" value={dr.endTime} onChange={e=>setDr({...dr,endTime:e.target.value})}/>
       </div>
-      <FInput label="å ´æ / URL" value={dr.location} onChange={e=>setDr({...dr,location:e.target.value})} placeholder="ä¾ï¼ã«ãã§ä¼è­°å®¤"/>
+      <FInput label="場所 / URL" value={dr.location} onChange={e=>setDr({...dr,location:e.target.value})} placeholder="例：カフェ会議室"/>
       <div>
-        <p className="text-xs font-medium text-gray-500 mb-2">åå è</p>
+        <p className="text-xs font-medium text-gray-500 mb-2">参加者</p>
         <div className="flex flex-wrap gap-2">
           {data.members.map(m=>{
             const sel=(dr.attendeeIds||[]).includes(m.id);
@@ -375,62 +375,62 @@ function Meetings({data,update}){
         </div>
       </div>
       <div>
-        <p className="text-xs font-medium text-gray-500 mb-2">ã¢ã¸ã§ã³ã</p>
+        <p className="text-xs font-medium text-gray-500 mb-2">アジェンダ</p>
         {(dr.agenda||[]).map((a,i)=>(
           <div key={a.id} className="flex items-center gap-2 bg-gray-50 rounded-xl p-2.5 mb-2">
             <span className="text-xs text-gray-400 font-bold w-5">{i+1}</span>
-            <div className="flex-1"><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500">{a.duration}å{a.owner?' Â· '+a.owner:''}</p></div>
-            <button onClick={()=>setDr({...dr,agenda:dr.agenda.filter(x=>x.id!==a.id)})} className="text-gray-400 text-lg">â</button>
+            <div className="flex-1"><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500">{a.duration}分{a.owner?' · '+a.owner:''}</p></div>
+            <button onClick={()=>setDr({...dr,agenda:dr.agenda.filter(x=>x.id!==a.id)})} className="text-gray-400 text-lg">✕</button>
           </div>
         ))}
         <div className="bg-blue-50 rounded-xl p-3 space-y-2">
-          <p className="text-xs font-bold text-blue-600">ï¼ ã¢ã¸ã§ã³ãé ç®ãè¿½å </p>
-          <FInput label="ã¿ã¤ãã«" value={na.title} onChange={e=>setNa({...na,title:e.target.value})} placeholder="ä¾ï¼åé±ã®æ¯ãè¿ã"/>
+          <p className="text-xs font-bold text-blue-600">＋ アジェンダ項目を追加</p>
+          <FInput label="タイトル" value={na.title} onChange={e=>setNa({...na,title:e.target.value})} placeholder="例：先週の振り返り"/>
           <div className="grid grid-cols-2 gap-2">
-            <FInput label="æéï¼åï¼" type="number" value={String(na.duration)} onChange={e=>setNa({...na,duration:parseInt(e.target.value)||15})}/>
-            <FInput label="æå½è" value={na.owner} onChange={e=>setNa({...na,owner:e.target.value})} placeholder="åå"/>
+            <FInput label="時間（分）" type="number" value={String(na.duration)} onChange={e=>setNa({...na,duration:parseInt(e.target.value)||15})}/>
+            <FInput label="担当者" value={na.owner} onChange={e=>setNa({...na,owner:e.target.value})} placeholder="名前"/>
           </div>
-          <FInput label="ã¡ã¢" value={na.note} onChange={e=>setNa({...na,note:e.target.value})} placeholder="è£è¶³"/>
-          <Btn variant="secondary" onClick={addAg} className="w-full">é ç®ãè¿½å </Btn>
+          <FInput label="メモ" value={na.note} onChange={e=>setNa({...na,note:e.target.value})} placeholder="補足"/>
+          <Btn variant="secondary" onClick={addAg} className="w-full">項目を追加</Btn>
         </div>
       </div>
-      <Btn variant="primary" onClick={save} className="w-full py-3">ä¼è­°ãä¿å­ãã</Btn>
+      <Btn variant="primary" onClick={save} className="w-full py-3">会議を保存する</Btn>
     </div>
   );
 
   if(view==='detail'&&det) return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">â</button><h2 className="font-bold text-gray-900 flex-1 truncate">{det.title}</h2></div>
+      <div className="flex items-center gap-3"><button onClick={()=>setView('list')} className="text-gray-500 text-2xl">←</button><h2 className="font-bold text-gray-900 flex-1 truncate">{det.title}</h2></div>
       <Card className="p-4 space-y-2">
-        <div className="flex gap-2 text-sm text-gray-600"><span>ð</span><span>{det.date} {det.startTime}ã{det.endTime}</span></div>
-        {det.location&&<div className="flex gap-2 text-sm text-gray-600"><span>ð</span><span>{det.location}</span></div>}
-        {det.attendeeIds.length>0&&<div className="flex gap-2 text-sm text-gray-600"><span>ð¥</span><span>{det.attendeeIds.map(id=>data.members.find(m=>m.id===id)?.name||id).join('ã')}</span></div>}
+        <div className="flex gap-2 text-sm text-gray-600"><span>📅</span><span>{det.date} {det.startTime}〜{det.endTime}</span></div>
+        {det.location&&<div className="flex gap-2 text-sm text-gray-600"><span>📍</span><span>{det.location}</span></div>}
+        {det.attendeeIds.length>0&&<div className="flex gap-2 text-sm text-gray-600"><span>👥</span><span>{det.attendeeIds.map(id=>data.members.find(m=>m.id===id)?.name||id).join('、')}</span></div>}
       </Card>
       {det.agenda.length>0&&(
         <Card className="overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">ð ã¢ã¸ã§ã³ã</p></div>
+          <div className="px-4 py-3 bg-gray-50 border-b border-gray-100"><p className="text-sm font-bold text-gray-700">📋 アジェンダ</p></div>
           {det.agenda.map((a,i)=>(
             <div key={a.id} className="px-4 py-3 border-b border-gray-50 last:border-0 flex gap-3">
               <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center flex-shrink-0 font-bold">{i+1}</span>
-              <div><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500 mt-0.5">{a.duration}å{a.owner?' Â· '+a.owner:''}{a.note?' Â· '+a.note:''}</p></div>
+              <div><p className="text-sm font-medium">{a.title}</p><p className="text-xs text-gray-500 mt-0.5">{a.duration}分{a.owner?' · '+a.owner:''}{a.note?' · '+a.note:''}</p></div>
             </div>
           ))}
-          <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">åè¨ {det.agenda.reduce((s,a)=>s+a.duration,0)} å</div>
+          <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">合計 {det.agenda.reduce((s,a)=>s+a.duration,0)} 分</div>
         </Card>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <a href={gcalUrl(det)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">ð Googleã«ã¬ã³ãã¼</a>
-        <a href={gmailUrl(det,data.members)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">âï¸ ã¡ã¼ã«&#x1f;c²¯å±æ</a>
+        <a href={gcalUrl(det)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">📅 Googleカレンダー</a>
+        <a href={gmailUrl(det,data.members)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-2xl py-3 text-sm font-medium active:scale-95 transition-transform">✉️ メールで共有</a>
       </div>
-      <Btn variant="danger" onClick={()=>delM(det.id)} className="w-full">ãã®ä¼è­°ãåé¤</Btn>
+      <Btn variant="danger" onClick={()=>delM(det.id)} className="w-full">この会議を削除</Btn>
     </div>
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">ä¼è­°ã»ã¢ã¸ã§ã³ã</h2><Btn variant="primary" onClick={()=>{setDr({title:'',date:'',startTime:'10:00',endTime:'11:00',location:'',attendeeIds:[],agenda:[]});setView('create');}}>ï¼ æ°è¦ä½æ</Btn></div>
+      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">会議・アジェンダ</h2><Btn variant="primary" onClick={()=>{setDr({title:'',date:'',startTime:'10:00',endTime:'11:00',location:'',attendeeIds:[],agenda:[]});setView('create');}}>＋ 新規作成</Btn></div>
       {data.meetings.length===0?(
-        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">ð</p><p className="text-sm">ä¼è­°ã¯ããã¾ãã</p></div>
+        <div className="text-center py-12 text-gray-400"><p className="text-4xl mb-2">📅</p><p className="text-sm">会議はありません</p></div>
       ):(
         <div className="space-y-3">
           {data.meetings.map(m=>(
@@ -438,10 +438,10 @@ function Meetings({data,update}){
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900">{m.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{m.date} {m.startTime}ã{m.endTime}</p>
-                  {m.location&&<p className="text-xs text-gray-400 mt-0.5">ð {m.location}</p>}
+                  <p className="text-xs text-gray-500 mt-0.5">{m.date} {m.startTime}〜{m.endTime}</p>
+                  {m.location&&<p className="text-xs text-gray-400 mt-0.5">📍 {m.location}</p>}
                 </div>
-                {m.agenda.length>0&&<span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex-shrink-0">{m.agenda.length}é ç®</span>}
+                {m.agenda.length>0&&<span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex-shrink-0">{m.agenda.length}項目</span>}
               </div>
             </Card>
           ))}
@@ -451,7 +451,7 @@ function Meetings({data,update}){
   );
 }
 
-// ââ ORG CHART ââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── ORG CHART ────────────────────────────────────────────────
 function OrgChart({data,update}){
   const [editing,setEditing]=useState(null);
   const [addTo,setAddTo]=useState(null);
@@ -485,11 +485,11 @@ function OrgChart({data,update}){
         <div className="flex flex-col items-center">
           {!isRoot&&<div className="w-px h-4 bg-gray-300"/>}
           <button onClick={()=>setEditing({...node})} className="rounded-2xl px-3 py-2 text-center border-2 transition-all active:scale-95 w-24 relative" style={{borderColor:t?.accent||'#6b7280',background:isRoot?'#1e3a5f':(t?.bg||'#f9fafb')}}>
-            <div className="text-lg">{isRoot?'ð':(t?.emoji||'ð¤')}</div>
+            <div className="text-lg">{isRoot?'👑':(t?.emoji||'👤')}</div>
             <p className="text-xs font-bold truncate" style={{color:isRoot?'white':(t?.accent||'#374151')}}>{node.name}</p>
             <p className="text-xs truncate" style={{color:isRoot?'#93c5fd':'#9ca3af'}}>{node.role}</p>
           </button>
-          <button onClick={()=>{setAddTo(node.id);setNn({name:'',role:'',teamId:t?.id||'cafe'});}} className="mt-1 w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-sm flex items-center justify-center hover:bg-gray-300 active:scale-95">ï¼</button>
+          <button onClick={()=>{setAddTo(node.id);setNn({name:'',role:'',teamId:t?.id||'cafe'});}} className="mt-1 w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-sm flex items-center justify-center hover:bg-gray-300 active:scale-95">＋</button>
         </div>
         {cs.length>0&&(
           <div className="flex gap-3 mt-0 pt-1" style={{flexWrap:'nowrap'}}>
@@ -502,39 +502,39 @@ function OrgChart({data,update}){
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">çµç¹å³</h2><span className="text-xs text-gray-400">ãã¼ããã¿ãããã¦ç·¨é</span></div>
+      <div className="flex items-center justify-between"><h2 className="font-bold text-gray-900">組織図</h2><span className="text-xs text-gray-400">ノードをタップして編集</span></div>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 overflow-auto">
         <div className="min-w-max flex flex-col items-center pb-4">{root&&<NodeBlock node={root} depth={0}/>}</div>
       </div>
       {editing&&(
-        <Modal title="ã¡ã³ãã¼ãç·¨é" onClose={()=>setEditing(null)}>
-          <FInput label="åå" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}/>
-          <FInput label="å½¹è·ã»å½¹å²" value={editing.role} onChange={e=>setEditing({...editing,role:e.target.value})}/>
-          <FSelect label="ãã¼ã  " value={editing.teamId} onChange={e=>setEditing({...editing,teamId:e.target.value})}>
-            <option value="top">ä»£è¡¡</option>
-            {TEAMSht=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+        <Modal title="メンバーを編集" onClose={()=>setEditing(null)}>
+          <FInput label="名前" value={editing.name} onChange={e=>setEditing({...editing,name:e.target.value})}/>
+          <FInput label="役職・役割" value={editing.role} onChange={e=>setEditing({...editing,role:e.target.value})}/>
+          <FSelect label="チーム" value={editing.teamId} onChange={e=>setEditing({...editing,teamId:e.target.value})}>
+            <option value="top">代表</option>
+            {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
           </FSelect>
           <div className="flex gap-2">
-            <Btn variant="primary" onClick={saveEdit} className="flex-1">ä¿å­</Btn>
-            {editing.id!=='top'&&<Btn variant="danger" onClick={()=>delNode(editing.id)}>åé¤</Btn>}
+            <Btn variant="primary" onClick={saveEdit} className="flex-1">保存</Btn>
+            {editing.id!=='top'&&<Btn variant="danger" onClick={()=>delNode(editing.id)}>削除</Btn>}
           </div>
         </Modal>
       )}
       {addTo&&(
-        <Modal title="ã¡ã³ãã¼ãè¿½å " onClose={()=>setAddTo(null)}>
-          <FInput label="åå *" value={nn.name} onChange={e=>setNn({...nn,name:e.target.value})} placeholder="ä¾ï¼ã¡ã³ãã¼A"/>
-          <FInput label="å½¹è·ã»å½¹å²" value={nn.role} onChange={e=>setNn({...nn,role:e.target.value})} placeholder="ä¾ï¼æå½è"/>
-          <FSelect label="ãã¼ã " value={nn.teamId} onChange={e=>setNn({...nn,teamId:e.target.value})}>
+        <Modal title="メンバーを追加" onClose={()=>setAddTo(null)}>
+          <FInput label="名前 *" value={nn.name} onChange={e=>setNn({...nn,name:e.target.value})} placeholder="例：メンバーA"/>
+          <FInput label="役職・役割" value={nn.role} onChange={e=>setNn({...nn,role:e.target.value})} placeholder="例：担当者"/>
+          <FSelect label="チーム" value={nn.teamId} onChange={e=>setNn({...nn,teamId:e.target.value})}>
             {TEAMS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
           </FSelect>
-          <Btn variant="primary" onClick={addChild} className="w-full">è¿½å ãã</Btn>
+          <Btn variant="primary" onClick={addChild} className="w-full">追加する</Btn>
         </Modal>
       )}
     </div>
   );
 }
 
-// ââ SETTINGS ââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── SETTINGS ────────────────────────────────────────────────
 function Settings({data,update}){
   const [copied,setCopied]=useState(false);
   const fRef=useRef(null);
@@ -547,63 +547,63 @@ function Settings({data,update}){
   };
   const importD=(e)=>{
     const f=e.target.files?.[0];if(!f)return;
-    const r=new FileReader();r.onload=(ev)=>{try{update(JSON.parse(ev.target.result));alert('ã¤ã³ãã¼ããã¾ãã');}catch{alert('ãã¡ã¤ã«å½¢å¼ãä¸æ­£ã§ã');}};r.readAsText(f);
+    const r=new FileReader();r.onload=(ev)=>{try{update(JSON.parse(ev.target.result));alert('インポートしました');}catch{alert('ファイル形式が不正です');}};r.readAsText(f);
   };
-  const reset=()=>{if(confirm('å¨ãã¼ã¿ããªã»ãããã¾ããï¼')){update(JSON.parse(JSON.stringify(DEF)));localStorage.removeItem(SK);}};
+  const reset=()=>{if(confirm('全データをリセットしますか'�')){update(JSON.parse(JSON.stringify(DEF)));localStorage.removeItem(SK);}};
 
   const report=()=>{
-    const lines=[`ãçµç¹ããã·ã¥ãã¼ã æ¥æ¬¡ã¬ãã¼ãã\nð ${today()}\n`];
+    const lines=[`【組織ダッシュボード 日次レポート】\n📅 ${today()}\n`];
     TEAMS.forEach(t=>{
-      const ds=data.dailyStatus[t.id];lines.push(`${t.emoji} ${t.label}ï¼${ds.status}`);
-      if(ds.note)lines.push(`  ç¶æ³ï¼${ds.note}`);
+      const ds=data.dailyStatus[t.id];lines.push(`${t.emoji} ${t.label}：${ds.status}`);
+      if(ds.note)lines.push(`  状況：${ds.note}`);
       const p=ds.approvals.filter(a=>!a.done);
-      if(p.length)lines.push(`  æ¿èªå¾ã¡ï¼${p.map(a=>a.label).join('ã')}`);
+      if(p.length)lines.push(`  承認待ち：${p.map(a=>a.label).join('、')}`);
     });
     const todo=data.tasks.filter(t=>t.status!=='done').length;
-    lines.push(`\nð æªå®äºã¿ã¹ã¯ï¼${todo}ä»¶`);
+    lines.push(`\n📋 未完了タスク：${todo}件`);
     return lines.join('\n');
   };
-  const shareG=()=>{window.open(`https://mail.google.com/mail/?view=cm&su=${encodeURIComponent('ãæ¥æ¬¡ã¬ãã¼ããçµç¹ããã·ã¥ãã¼ã')}&body=${encodeURIComponent(report())}`,'_blank');};
+  const shareG=()=>{window.open(`https://mail.google.com/mail/?view=cm&su=${encodeURIComponent('【日次レポート】組織ダッシュボード')}&body=${encodeURIComponent(report())}`,'_blank');};
   const copy=async()=>{await navigator.clipboard.writeText(report());setCopied(true);setTimeout(()=>setCopied(false),2000);};
 
   return (
     <div className="space-y-4">
-      <h2 className="font-bold text-gray-900">è¨­å®ã»å±æ</h2>
+      <h2 className="font-bold text-gray-900">設定・共有</h2>
       <Card className="p-4 space-y-3">
-        <p className="text-sm font-bold text-gray-700">ð¤ æ¥æ¬¡ã¬ãã¼ããå±æ</p>
+        <p className="text-sm font-bold text-gray-700">📤 日次レポートを共有</p>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={shareG} className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">âï¸ Gmail ã§éä¿¡</button>
-          <button onClick={copy} className={`flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-medium active:scale-95 ${copied?'bg-green-500 text-white':'bg-gray-100 text-gray-700'}`}>{copied?'â ã³ãã¼æ¸ã¿':'ð ãã­ã¹ããã³ãã¼'}</button>
+          <button onClick={shareG} className="flex items-center justify-center gap-1.5 bg-red-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">✉️ Gmail で送信</button>
+          <button onClick={copy} className={`flex items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-medium active:scale-95 ${copied?'bg-green-500 text-white':'bg-gray-100 text-gray-700'}`}>{copied?'✓ コピー済み':'📋 テキストをコピー'}</button>
         </div>
       </Card>
       <Card className="p-4 space-y-3">
-        <p className="text-sm font-bold text-gray-700">ð ãã¼ã¿ã®åæï¼è¤æ°ããã¤ã¹ï¼</p>
-        <p className="text-xs text-gray-400">ä»ã®ããã¤ã¹ã§ããã¼ã¿ãä½¿ãå ´åã¯ãJSONã¨ã¯ã¹ãã¼ããã¦ç§»è¡åã§ã¤ã³ãã¼ããã¦ãã ããã</p>
+        <p className="text-sm font-bold text-gray-700">🔄 データの同期（複数デバイス）</p>
+        <p className="text-xs text-gray-400">他のデバイスでもデータを使う場合は、JSONエクスポートして移行先でインポートしてください。</p>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={exportD} className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">â¬ï¸ ã¨ã¯ã¹ãã¼ã</button>
-          <button onClick={()=>fRef.current?.click()} className="flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">â¬ï¸ ã¤ã³ãã¼ã</button>
+          <button onClick={exportD} className="flex items-center justify-center gap-1.5 bg-blue-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">⬇️ エクスポート</button>
+          <button onClick={()=>fRef.current?.click()} className="flex items-center justify-center gap-1.5 bg-green-500 text-white rounded-xl py-3 text-sm font-medium active:scale-95">⬆️ インポート</button>
         </div>
         <input ref={fRef} type="file" accept=".json" className="hidden" onChange={importD}/>
       </Card>
       <Card className="p-4 space-y-2">
-        <p className="text-sm font-bold text-gray-700">ð çµ±è¨</p>
+        <p className="text-sm font-bold text-gray-700">📊 統計</p>
         <div className="text-xs text-gray-400 space-y-1">
-          <p>ã¿ã¹ã¯ï¼{data.tasks.length}ä»¶ï¼æªå®äº {data.tasks.filter(t=>t.status!=='done').length}ä»¶ï¼</p>
-          <p>ä¼è­°ï¼{data.meetings.length}ä»¶ ï¼ ã¡ã³ãã¼ï¼{data.members.length}å</p>
+          <p>タスク：{data.tasks.length}件（未完了 {data.tasks.filter(t=>t.status!=='done').length}件）</p>
+          <p>会議：{data.meetings.length}件 ／ メンバー：{data.members.length}名</p>
         </div>
       </Card>
-      <button onClick={reset} className="w-full py-3 rounded-2xl border-2 border-red-200 text-red-400 text-sm font-medium active:scale-95">â ï¸ å¨ãã¼ã¿ããªã»ãã</button>
+      <button onClick={reset} className="w-full py-3 rounded-2xl border-2 border-red-200 text-red-400 text-sm font-medium active:scale-95">⚠️ 全データをリセット</button>
     </div>
   );
 }
 
-// ââ APP SHELL ââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── APP SHELL ────────────────────────────────────────────────
 const NAV=[
-  {id:'overview',emoji:'ð ',label:'æ¦è¦'},
-  {id:'tasks',   emoji:'â',label:'ã¿ã¹ã¯'},
-  {id:'meetings',emoji:'ð',label:'ä¼è­°'},
-  {id:'org',     emoji:'ð¥',label:'çµç¹å³'},
-  {id:'settings',emoji:'âï¸',label:'è¨­å®'},
+  {id:'overview',emoji:'🏠',label:'概要'},
+  {id:'tasks',   emoji:'✅',label:'タスク'},
+  {id:'meetings',emoji:'📅',label:'会議'},
+  {id:'org',     emoji:'👥',label:'組織図'},
+  {id:'settings',emoji:'⚙️',label:'設定'},
 ];
 
 function App(){
@@ -619,7 +619,7 @@ function App(){
 
   if(!ready)return(
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center"><div className="text-5xl mb-4 animate-bounce">ð¢</div><p className="text-gray-400 text-sm">èª­ã¿è¾¼ã¿ä¸­...</p></div>
+      <div className="text-center"><div className="text-5xl mb-4 animate-bounce">🏢</div><p className="text-gray-400 text-sm">読み込み中...</p></div>
     </div>
   );
 
@@ -628,10 +628,10 @@ function App(){
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.06)'}}>
         <div>
-          <h1 className="font-bold text-gray-900">çµç¹ããã·ã¥ãã¼ã</h1>
+          <h1 className="font-bold text-gray-900">組織ダッシュボード</h1>
           <p className="text-xs text-gray-400">{today()}</p>
         </div>
-        {penApr>0&&<span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{penApr}ä»¶ æ¿èªå¾ã¡</span>}
+        {penApr>0&&<span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{penApr}件 承認待ち</span>}
       </header>
 
       {/* Content */}
