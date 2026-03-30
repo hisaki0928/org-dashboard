@@ -549,7 +549,7 @@ function Settings({data,update}){
     const f=e.target.files?.[0];if(!f)return;
     const r=new FileReader();r.onload=(ev)=>{try{update(JSON.parse(ev.target.result));alert('インポートしました');}catch{alert('ファイル形式が不正です');}};r.readAsText(f);
   };
-  const reset=()=>{if(confirm('全データをリセットしますか'？')){update(JSON.parse(JSON.stringify(DEF)));localStorage.removeItem(SK);}};
+  const reset=()=>{if(confirm('全データをリセットしますか？')){update(JSON.parse(JSON.stringify(DEF)));localStorage.removeItem(SK);}};
 
   const report=()=>{
     const lines=[`【組織ダッシュボード 日次レポート】\n📅 ${today()}\n`];
